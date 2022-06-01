@@ -9,7 +9,7 @@ const cheerio = require('cheerio');
 
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36')
 
-    await page.goto('https://twitter.com/TaylourPaige', { waitUntil: 'networkidle2' });
+    await page.goto('https://twitter.com/benshapiro', { waitUntil: 'networkidle2' });
     await page.setViewport({ width: 1280, height: 800 });
 
     await page.waitForSelector('article')
@@ -20,39 +20,36 @@ const cheerio = require('cheerio');
         tweets: []
     }
 
-    let i = 0
+    const total_tweets = 51
+
     async function getTweetsAndScroll() {
         let bodyHTML = await page.evaluate(() => document.body.innerHTML);
         let $ = cheerio.load(bodyHTML)
-        let all_tweets = $(bodyHTML).find('[data-testid="tweet"]')
-        for (let ii = 0; ii < all_tweets.length; ii++) {
-
-            console.log(!tweets_elements.includes($(all_tweets[ii]).text()))
-            if (!tweets_elements.includes($(all_tweets[ii]).text())) {
-                let tweet = $(all_tweets[ii]).find('[data-testid="tweetText"]').text()
-                let date = $(all_tweets[ii]).find('time').attr('datetime')
+        let all_tweets = $(bodyHTML).find('article[data-testid="tweet"]')
+        all_tweets.each(function() {
+            if (!tweets_elements.includes($(this).find('time').attr('datetime')) && tweets_obj.tweets.length < total_tweets) {
+                let tweet = $(this).find('[data-testid="tweetText"]').eq(0).text()
+                let date = $(this).find('time').attr('datetime')
                 tweets_obj.tweets.push({
                     tweet,
                     date
                 })
-                tweets_elements.push($(all_tweets[ii]).text())
+                tweets_elements.push($(this).find('time').attr('datetime'))
             }
-        }
+        })
+
+
 
         await page.evaluate(() => {
             document.querySelector('nav ~ section > div > div > div:last-child').scrollIntoView()
         })
-        await page.waitForTimeout(3000)
-        i++
-        if (i <= 5) {
+        //await page.waitForTimeout(3000)
+        if (tweets_obj.tweets.length < total_tweets) {
             getTweetsAndScroll()
         }
         else {
-            function hasDuplicates(array) {
-                return (new Set(array)).size !== array.length;
-            }
             console.log(tweets_obj)
-            console.log(hasDuplicates(tweets_obj.tweets))
+            console.log(tweets_obj.tweets.length)
         }
     }
     getTweetsAndScroll()
