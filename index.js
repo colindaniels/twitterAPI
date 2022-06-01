@@ -20,7 +20,7 @@ const cheerio = require('cheerio');
         tweets: []
     }
 
-    const total_tweets = 51
+    const total_tweets = 100
 
     async function getTweetsAndScroll() {
         let bodyHTML = await page.evaluate(() => document.body.innerHTML);
@@ -39,10 +39,15 @@ const cheerio = require('cheerio');
         })
 
 
-
+        var currentStyle = ''
         await page.evaluate(() => {
             document.querySelector('nav ~ section > div > div > div:last-child').scrollIntoView()
+            currentStyle = Number(document.querySelector('nav ~ section > div > div').getAttribute('style').split(' ').at(-1).replace('px;', ''))
+            console.log(currentStyle)
         })
+        await page.evaluate(() => { console.log(Number(document.querySelector('nav ~ section > div > div').getAttribute('style').split(' ').at(-1).replace('px;', ''))) })
+        await page.waitForFunction("Number(document.querySelector('nav ~ section > div > div').getAttribute('style').split(' ').at(-1).replace('px;', '')) != currentStyle")
+        console.log('waited')
         //await page.waitForTimeout(3000)
         if (tweets_obj.tweets.length < total_tweets) {
             getTweetsAndScroll()
@@ -58,3 +63,4 @@ const cheerio = require('cheerio');
 
 
 })()
+
