@@ -9,27 +9,55 @@ const cheerio = require('cheerio');
 
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36')
 
-    await page.goto('https://twitter.com/leadermcconnell', { waitUntil: 'networkidle2' });
-    await page.setViewport({ width: 1280, height: 50000 });
-    await page.waitForFunction(
-        '(() => { for (let e of document.querySelectorAll("time")) { if (e.textContent.includes("Jun")) { return true } } })()',
-        { timeout: 0 }
-    )
-    let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-    const $ = cheerio.load(bodyHTML)
-    const tweets_html = $('[data-testid="tweet"]')
-    const total_tweets = tweets_html.length
-    tweets_obj = {
-        tweets: [],
-        total_tweets
+    await page.goto('https://twitter.com/TaylourPaige', { waitUntil: 'networkidle2' });
+    await page.setViewport({ width: 1280, height: 800 });
+
+    await page.waitForSelector('article')
+
+    var tweets_elements = []
+
+    var tweets_obj = {
+        tweets: []
     }
-    tweets_html.each(function() {
-        const tweetText = $(this).find('[data-testid="tweetText"]').text()
-        const tweetDate = $(this).find('time').attr('datetime')
-        tweets_obj.tweets.push({
-            tweetText,
-            tweetDate
+
+    let i = 0
+    async function getTweetsAndScroll() {
+        let bodyHTML = await page.evaluate(() => document.body.innerHTML);
+        let $ = cheerio.load(bodyHTML)
+        let all_tweets = $(bodyHTML).find('[data-testid="tweet"]')
+        for (let ii = 0; ii < all_tweets.length; ii++) {
+
+            console.log(!tweets_elements.includes($(all_tweets[ii]).text()))
+            if (!tweets_elements.includes($(all_tweets[ii]).text())) {
+                let tweet = $(all_tweets[ii]).find('[data-testid="tweetText"]').text()
+                let date = $(all_tweets[ii]).find('time').attr('datetime')
+                tweets_obj.tweets.push({
+                    tweet,
+                    date
+                })
+                tweets_elements.push($(all_tweets[ii]).text())
+            }
+        }
+
+        await page.evaluate(() => {
+            document.querySelector('nav ~ section > div > div > div:last-child').scrollIntoView()
         })
-    })
-    console.log(tweets_obj)
+        await page.waitForTimeout(3000)
+        i++
+        if (i <= 5) {
+            getTweetsAndScroll()
+        }
+        else {
+            function hasDuplicates(array) {
+                return (new Set(array)).size !== array.length;
+            }
+            console.log(tweets_obj)
+            console.log(hasDuplicates(tweets_obj.tweets))
+        }
+    }
+    getTweetsAndScroll()
+
+
+
+
 })()
