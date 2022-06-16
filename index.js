@@ -15,7 +15,7 @@ const argv = process.argv.slice(2);
 const handles_file = argv[0];
 const total_tweets = argv[1];
 
-const handles_list = fs.readFileSync(handles_file, "utf8").split('\n').slice(1)
+const handles_list = fs.readFileSync(handles_file, "utf8").split('\n').slice(1).slice(0, -1)
 
 const bar1 = new cliProgress.SingleBar({
     format: 'Progress |' + colors.green('{bar}') + '| {percentage}% || {value}/{total} Expected Tweets',
@@ -44,14 +44,25 @@ function getTweetsFromHandle(handle) {
                 resolve(big_list)
 
             }
+
+
+            await page.evaluate(() => {
+                if (document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div')) {
+                    if (!!document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').textContent.match('Try reloading')) {
+                        document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').click()
+                    }
+                }
+            })
+
+
             if (!dead) {
                 if (r.url().startsWith('https://twitter.com/i/api/2/search/adaptive.json')) {
                     let response = await r.json().catch(async () => {
                         await page.screenshot({ path: 'pageOnErr.jpeg' })
                     })
-    
-    
-    
+
+
+
                     if (Object.keys(response.globalObjects.tweets).length > 0) {
                         let tweets_array = []
                         for (let id of Object.keys(response.globalObjects.tweets)) {
@@ -61,15 +72,15 @@ function getTweetsFromHandle(handle) {
                                 date: tweet.created_at,
                                 user_id: tweet.user_id_str
                             })
-    
+
                         }
                         tweets_array.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    
+
+
                         if (i == 1) {
                             user_id = tweets_array[0].user_id
                         }
-    
+
                         tweets_array.forEach(async (t) => {
                             if (i <= total_tweets) {
                                 if (t.user_id == user_id) {
@@ -77,14 +88,14 @@ function getTweetsFromHandle(handle) {
                                     bar1.increment()
                                     i++
                                 }
-    
-    
+
+
                             }
                             else {
                                 dead = true
                                 resolve(big_list)
                             }
-    
+
                         })
                     }
                     else {
@@ -92,9 +103,6 @@ function getTweetsFromHandle(handle) {
                         await page.waitForSelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').catch(() => {
 
                         })
-                        let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-                        let $ = cheerio.load(bodyHTML)
-                        //console.log($('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').text().match('Try reloading'))
                         if (!dead) {
                             let hasTweets = await page.evaluate(() => {
                                 return !!document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').innerHTML
@@ -114,11 +122,11 @@ function getTweetsFromHandle(handle) {
                             resolve(big_list)
                         }
 
-    
-    
-    
+
+
+
                     }
-    
+
                 }
             }
 
@@ -130,8 +138,8 @@ function getTweetsFromHandle(handle) {
         await page.goto(url, { timeout: 0 });
 
 
-        await page.waitForSelector('[role="progressbar"]', { hidden: false })
-        await page.waitForSelector('[role="progressbar"]', { hidden: true })
+        await page.waitForSelector('[role="progressbar"]', { hidden: false, timeout: 120000 })
+        await page.waitForSelector('[role="progressbar"]', { hidden: true, timeout: 120000 })
 
 
 
