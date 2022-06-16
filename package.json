@@ -4,27 +4,30 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "start": "nodemon index.js"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon index.js"
     },
     "repository": {
-      "type": "git",
-      "url": "git+https://github.com/colindaniels/twitterAPI.git"
+        "type": "git",
+        "url": "git+https://github.com/colindaniels/twitterAPI.git"
     },
     "author": "",
     "license": "ISC",
     "bugs": {
-      "url": "https://github.com/colindaniels/twitterAPI/issues"
+        "url": "https://github.com/colindaniels/twitterAPI/issues"
     },
     "homepage": "https://github.com/colindaniels/twitterAPI#readme",
     "dependencies": {
-      "cheerio": "^1.0.0-rc.11",
-      "csv-parser": "^3.0.0",
-      "csv-writer": "^1.6.0",
-      "dotenv": "^16.0.1",
-      "puppeteer": "^14.1.1"
+        "ansi-colors": "^4.1.3",
+        "cheerio": "^1.0.0-rc.11",
+        "cli-progress": "^3.11.1",
+        "csv-parser": "^3.0.0",
+        "csv-writer": "^1.6.0",
+        "dotenv": "^16.0.1",
+        "fs": "^0.0.1-security",
+        "puppeteer": "^14.1.1"
     },
     "devDependencies": {
-      "nodemon": "^2.0.16"
+        "nodemon": "^2.0.16"
     }
-  }
+}
