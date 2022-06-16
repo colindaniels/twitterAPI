@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
 const cliProgress = require('cli-progress');
 const colors = require('ansi-colors');
@@ -32,65 +31,113 @@ function getTweetsFromHandle(handle) {
         let user_id = ''
         let big_list = []
         let browser = await puppeteer.launch({
-            headless: true
+            headless: false
         })
         let page = await browser.newPage()
         await page.setViewport({ width: 1280, height: 1000 });
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36')
 
-
+        var dead = false
         page.on('response', async (r) => {
-            if (r.url().startsWith('https://twitter.com/i/api/2/search/adaptive.json')) {
-                let response = await r.json()
-                if (Object.keys(response.globalObjects.tweets).length !== 0) {
-                    let tweets_array = []
-                    for (let id of Object.keys(response.globalObjects.tweets)) {
-                        let tweet = response.globalObjects.tweets[id]
-                        tweets_array.push({
-                            text: tweet.full_text,
-                            date: tweet.created_at,
-                            user_id: tweet.user_id_str
-                        })
+            if (r.url().includes('rubber-chicken')) {
+                dead = true
+                resolve(big_list)
 
-                    }
-                    tweets_array.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-
-                    if (i == 1) {
-                        user_id = tweets_array[0].user_id
-                    }
-
-
-                    tweets_array.forEach(async (t) => {
-                        if (i <= total_tweets) {
-                            if (t.user_id == user_id) {
-                                big_list.push(t)
-                                bar1.increment()
-
-                                i++
+            }
+            if (!dead) {
+                if (r.url().startsWith('https://twitter.com/i/api/2/search/adaptive.json')) {
+                    let response = await r.json().catch(async () => {
+                        await page.screenshot({ path: 'pageOnErr.jpeg' })
+                    })
+    
+    
+    
+                    if (Object.keys(response.globalObjects.tweets).length > 0) {
+                        let tweets_array = []
+                        for (let id of Object.keys(response.globalObjects.tweets)) {
+                            let tweet = response.globalObjects.tweets[id]
+                            tweets_array.push({
+                                text: tweet.full_text,
+                                date: tweet.created_at,
+                                user_id: tweet.user_id_str
+                            })
+    
+                        }
+                        tweets_array.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    
+                        if (i == 1) {
+                            user_id = tweets_array[0].user_id
+                        }
+    
+                        tweets_array.forEach(async (t) => {
+                            if (i <= total_tweets) {
+                                if (t.user_id == user_id) {
+                                    big_list.push(t)
+                                    bar1.increment()
+                                    i++
+                                }
+    
+    
                             }
+                            else {
+                                dead = true
+                                resolve(big_list)
+                            }
+    
+                        })
+                    }
+                    else {
+                        // be 100% sure that you've reached the end
+                        await page.waitForSelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').catch(() => {
 
-
+                        })
+                        let bodyHTML = await page.evaluate(() => document.body.innerHTML);
+                        let $ = cheerio.load(bodyHTML)
+                        console.log('before')
+                        console.log($('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').text().match('Try reloading'))
+                        console.log('after')
+                        if (!dead) {
+                            console.log('NOT DEAD')
+                            let hasTweets = await page.evaluate(() => {
+                                return !!document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').innerHTML
+                            })
+                            if (!hasTweets) {
+                                dead = true
+                                resolve(big_list)
+                            }
+                            else {
+                                //console.log('none, but found one at end')
+                                //console.log(url)
+                                //await page.screenshot({ path: `${handle}.jpeg` })
+                            }
                         }
                         else {
+                            dead = true
                             resolve(big_list)
                         }
 
-                    })
+    
+    
+    
+                    }
+    
                 }
-                else {
-                    resolve(big_list)
-                }
-
-
-
-
-
-
             }
+
+
         })
         let url = `https://twitter.com/search?q=from%3A${handle}%20since%3A2006-03-21&src=typed_query&f=live`
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+
+
+        await page.goto(url, { timeout: 0 });
+
+
+        await page.waitForSelector('[role="progressbar"]', { hidden: false })
+        await page.waitForSelector('[role="progressbar"]', { hidden: true })
+
+
+
         await page.evaluate(() => {
             setInterval(() => {
                 window.scrollTo(0, document.body.scrollHeight);
@@ -100,27 +147,31 @@ function getTweetsFromHandle(handle) {
 
     })
 }
+
+// to test if all handles have completed
+// weird and really fucking bad code so change in future
+var index_total = 0
+let running_total = 0
 handles_list.forEach((h, ii) => {
+    index_total = index_total + ii
     getTweetsFromHandle(h).then((all) => {
-        writeCsv(all, h).then(() => {
-            if (ii + 1 == handles_list.length) {
+        running_total = running_total + ii
+        output(all, h).then(() => {
+            if (running_total == index_total) {
                 process.exit()
             }
         })
+
 
     })
 })
 
 
 
-async function writeCsv(data, h) {
-
-    var csvWriter = createCsvWriter({
-        path: `output/${h}.csv`,
-        header: [
-            { id: 'text', title: 'text' },
-            { id: 'date', title: 'date' }
-        ]
-    });
-    await csvWriter.writeRecords(data)
+async function output(data, h) {
+    await fs.writeFileSync(`output/${h}.json`, JSON.stringify(data), (err) => {
+        if (err) {
+            console.log(err)
+        }
+    })
 }
