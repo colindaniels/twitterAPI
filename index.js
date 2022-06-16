@@ -31,7 +31,7 @@ function getTweetsFromHandle(handle) {
         let user_id = ''
         let big_list = []
         let browser = await puppeteer.launch({
-            headless: false
+            headless: true
         })
         let page = await browser.newPage()
         await page.setViewport({ width: 1280, height: 1000 });
