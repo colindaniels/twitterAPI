@@ -94,11 +94,8 @@ function getTweetsFromHandle(handle) {
                         })
                         let bodyHTML = await page.evaluate(() => document.body.innerHTML);
                         let $ = cheerio.load(bodyHTML)
-                        console.log('before')
-                        console.log($('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').text().match('Try reloading'))
-                        console.log('after')
+                        //console.log($('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').text().match('Try reloading'))
                         if (!dead) {
-                            console.log('NOT DEAD')
                             let hasTweets = await page.evaluate(() => {
                                 return !!document.querySelector('[data-testid="primaryColumn"] section > div > div > div:last-child > div > div').innerHTML
                             })
